@@ -198,7 +198,8 @@ void AAWProxy::handleClient(int server_sock) {
         Logger::instance()->info("setsockopt keepalive failed: %s\n", strerror(errno));
     }
     
-    // Set TCP keepalive parameters
+    // Set TCP keepalive parameters (Linux-specific)
+#ifdef __linux__
     int keepidle = 60;  // Start sending keepalive probes after 60 seconds of idle
     int keepintvl = 10; // Send keepalive probes every 10 seconds
     int keepcnt = 6;    // Drop connection after 6 failed probes
@@ -212,6 +213,7 @@ void AAWProxy::handleClient(int server_sock) {
     if (setsockopt(m_tcp_fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt))) {
         Logger::instance()->info("setsockopt keepcnt failed: %s\n", strerror(errno));
     }
+#endif
 
     // Setup signal handler
     struct sigaction sa;
