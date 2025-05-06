@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <thread>
@@ -182,13 +183,34 @@ void AAWProxy::handleClient(int server_sock) {
 
     // Set timeout on the TCP socket
     struct timeval tv = {
-        .tv_sec = 10,
+        .tv_sec = 30,  // Increased from 10 to 30 for better stability with newer phones
         .tv_usec = 0,
     };
 
     if (setsockopt(m_tcp_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))) {
         Logger::instance()->info("setsockopt failed: %s\n", strerror(errno));
         return;
+    }
+    
+    // Enable TCP keepalive
+    int keepalive = 1;
+    if (setsockopt(m_tcp_fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive))) {
+        Logger::instance()->info("setsockopt keepalive failed: %s\n", strerror(errno));
+    }
+    
+    // Set TCP keepalive parameters
+    int keepidle = 60;  // Start sending keepalive probes after 60 seconds of idle
+    int keepintvl = 10; // Send keepalive probes every 10 seconds
+    int keepcnt = 6;    // Drop connection after 6 failed probes
+    
+    if (setsockopt(m_tcp_fd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle))) {
+        Logger::instance()->info("setsockopt keepidle failed: %s\n", strerror(errno));
+    }
+    if (setsockopt(m_tcp_fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl))) {
+        Logger::instance()->info("setsockopt keepintvl failed: %s\n", strerror(errno));
+    }
+    if (setsockopt(m_tcp_fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt))) {
+        Logger::instance()->info("setsockopt keepcnt failed: %s\n", strerror(errno));
     }
 
     // Setup signal handler

@@ -1,0 +1,10 @@
+syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
+
+// Used for protocol version negotiation
+message WifiVersionResponse {
+    required int32 major_version = 1;
+    required int32 minor_version = 2;
+    optional int32 patch_version = 3 [default = 0];
+    optional int32 features = 4 [default = 0]; // Bitfield for feature flags
+}

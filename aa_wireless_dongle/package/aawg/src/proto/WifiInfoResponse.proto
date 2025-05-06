@@ -25,4 +25,5 @@ message WifiInfoResponse {
     required string bssid = 3;
     required SecurityMode security_mode = 4;
     required AccessPointType access_point_type = 5;
+    optional int32 protocol_version = 6 [default = 1];  // Added for version negotiation
 }

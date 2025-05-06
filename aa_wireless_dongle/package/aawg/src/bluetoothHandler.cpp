@@ -227,13 +227,25 @@ void BluetoothHandler::connectDevice() {
 void BluetoothHandler::retryConnectLoop() {
     bool should_exit = false;
     std::future<void> connectWithRetryFuture = connectWithRetryPromise->get_future();
+    
+    int32_t attempts = 0;
+    int32_t maxRetries = Config::instance()->getConnectionRetries();
+    int32_t retryDelaySeconds = Config::instance()->getHighPerformanceMode() ? 10 : 20;
+    
+    Logger::instance()->info("Starting connection retry loop with max %d retries\n", maxRetries);
 
-    while (!should_exit) {
+    while (!should_exit && attempts <= maxRetries) {
+        Logger::instance()->info("Connection attempt %d of %d\n", attempts + 1, maxRetries + 1);
         connectDevice();
+        attempts++;
 
-        if (connectWithRetryFuture.wait_for(std::chrono::seconds(20)) == std::future_status::ready) {
+        if (connectWithRetryFuture.wait_for(std::chrono::seconds(retryDelaySeconds)) == std::future_status::ready) {
             should_exit = true;
             connectWithRetryPromise = nullptr;
+        }
+        
+        if (attempts > maxRetries) {
+            Logger::instance()->info("Maximum connection attempts reached\n");
         }
     }
 

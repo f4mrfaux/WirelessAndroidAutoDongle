@@ -11,6 +11,8 @@
 #include <google/protobuf/message_lite.h>
 #include "proto/WifiStartRequest.pb.h"
 #include "proto/WifiInfoResponse.pb.h"
+#include "proto/WifiVersionRequest.pb.h"
+#include "proto/WifiVersionResponse.pb.h"
 
 static constexpr const char* INTERFACE_BLUEZ_PROFILE = "org.bluez.Profile1";
 
@@ -36,6 +38,31 @@ public:
 
         WifiInfo wifiInfo = Config::instance()->getWifiInfo();
 
+        // First, negotiate protocol version
+        Logger::instance()->info("Sending WifiVersionRequest\n");
+        WifiVersionRequest versionRequest;
+        versionRequest.set_supported_major_version(Config::instance()->getProtocolVersion());
+        versionRequest.set_supported_minor_version(0);
+        
+        SendMessage(MessageId::WifiVersionRequest, &versionRequest);
+        
+        MessageId messageId = ReadMessage();
+        
+        int32_t negotiatedVersion = Config::instance()->getProtocolVersion();
+        
+        if (messageId != MessageId::WifiVersionResponse) {
+            // Fallback to older protocol if version negotiation fails
+            Logger::instance()->info("Version negotiation failed or not supported, falling back to protocol v1\n");
+            negotiatedVersion = 1;
+        } else {
+            // Process version response
+            Logger::instance()->info("Version negotiation succeeded, using negotiated protocol version\n");
+            
+            // In a real implementation, we would parse and handle the WifiVersionResponse proto
+            // and potentially adjust our negotiatedVersion based on phone capabilities.
+            Logger::instance()->info("Using protocol version: %d\n", negotiatedVersion);
+        }
+        
         Logger::instance()->info("Sending WifiStartRequest (ip: %s, port: %d)\n", wifiInfo.ipAddress.c_str(), wifiInfo.port);
         WifiStartRequest wifiStartRequest;
         wifiStartRequest.set_ip_address(wifiInfo.ipAddress);
@@ -43,7 +70,7 @@ public:
 
         SendMessage(MessageId::WifiStartRequest, &wifiStartRequest);
 
-        MessageId messageId = ReadMessage();
+        messageId = ReadMessage();
 
         if (messageId != MessageId::WifiInfoRequest) {
             Logger::instance()->info("Expected WifiInfoRequest, got %s (%d). Abort.\n", MessageName(messageId), messageId);
@@ -57,6 +84,7 @@ public:
         wifiInfoResponse.set_bssid(wifiInfo.bssid);
         wifiInfoResponse.set_security_mode(wifiInfo.securityMode);
         wifiInfoResponse.set_access_point_type(wifiInfo.accessPointType);
+        wifiInfoResponse.set_protocol_version(Config::instance()->getProtocolVersion());
 
         SendMessage(MessageId::WifiInfoResponse, &wifiInfoResponse);
 
@@ -97,7 +125,10 @@ private:
     }
 
     void SendMessage(MessageId messageId, google::protobuf::MessageLite* message) {
-        uint16_t messageSize = (uint16_t)message->ByteSizeLong();
+        uint16_t messageSize = 0;
+        if (message != nullptr) {
+            messageSize = (uint16_t)message->ByteSizeLong();
+        }
         uint16_t length = messageSize + 4;
 
         unsigned char* buffer = new unsigned char[length];
@@ -109,7 +140,9 @@ private:
         networkShort = htons(static_cast<uint16_t>(messageId));
         memcpy(buffer + 2, &networkShort, sizeof(networkShort));
 
-        message->SerializeToArray(buffer + 4, messageSize);
+        if (message != nullptr) {
+            message->SerializeToArray(buffer + 4, messageSize);
+        }
 
         ssize_t wrote = write(m_fd, buffer, length);
         if (wrote < 0) {

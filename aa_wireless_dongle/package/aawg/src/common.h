@@ -29,6 +29,9 @@ public:
 
     WifiInfo getWifiInfo();
     ConnectionStrategy getConnectionStrategy();
+    int32_t getProtocolVersion();
+    int32_t getConnectionRetries();
+    bool getHighPerformanceMode();
 
     std::string getUniqueSuffix();
 private:
@@ -36,10 +39,14 @@ private:
 
     int32_t getenv(std::string name, int32_t defaultValue);
     std::string getenv(std::string name, std::string defaultValue);
+    bool getenvBool(std::string name, bool defaultValue);
 
     std::string getMacAddress(std::string interface);
 
     std::optional<ConnectionStrategy> connectionStrategy;
+    std::optional<int32_t> protocolVersion;
+    std::optional<int32_t> connectionRetries;
+    std::optional<bool> highPerformanceMode;
 };
 
 class Logger {

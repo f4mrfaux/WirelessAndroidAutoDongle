@@ -28,6 +28,16 @@ std::string Config::getenv(std::string name, std::string defaultValue) {
     return envValue != nullptr ? envValue : defaultValue;
 }
 
+bool Config::getenvBool(std::string name, bool defaultValue) {
+    char* envValue = std::getenv(name.c_str());
+    if (envValue == nullptr) {
+        return defaultValue;
+    }
+    
+    std::string value(envValue);
+    return (value == "1" || value == "true" || value == "yes" || value == "on");
+}
+
 std::string Config::getMacAddress(std::string interface) {
     std::ifstream addressFile("/sys/class/net/" + interface + "/address");
 
@@ -87,6 +97,30 @@ ConnectionStrategy Config::getConnectionStrategy() {
     }
 
     return connectionStrategy.value();
+}
+
+int32_t Config::getProtocolVersion() {
+    if (!protocolVersion.has_value()) {
+        protocolVersion = getenv("AAWG_PROTOCOL_VERSION", 2);
+    }
+    
+    return protocolVersion.value();
+}
+
+int32_t Config::getConnectionRetries() {
+    if (!connectionRetries.has_value()) {
+        connectionRetries = getenv("AAWG_CONNECTION_RETRIES", 3);
+    }
+    
+    return connectionRetries.value();
+}
+
+bool Config::getHighPerformanceMode() {
+    if (!highPerformanceMode.has_value()) {
+        highPerformanceMode = getenvBool("AAWG_HIGH_PERFORMANCE", false);
+    }
+    
+    return highPerformanceMode.value();
 }
 #pragma endregion Config
 
