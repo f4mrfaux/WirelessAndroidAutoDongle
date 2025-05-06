@@ -35,6 +35,11 @@ services:
     environment:
       - BOARD_NAME=raspberrypi4
 
+  opi02w:
+    <<: *generate_image
+    environment:
+      - BOARD_NAME=orangepizero2w
+
 volumes:
   dl:
   output:

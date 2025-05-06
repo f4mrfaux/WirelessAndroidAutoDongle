@@ -11,11 +11,12 @@ This repository consists of the buildroot setup to generate an sd card image to 
 - Supports multiple boards (Currently multiple Raspberry Pi boards).
 
 ## Supported Hardware
-This is currently tested and built for the following Raspberry Pi boards supporting USB OTG.
+This is currently tested and built for the following boards supporting USB OTG.
 - **Raspberry Pi Zero W**
 - **Raspberry Pi Zero 2 W**
 - **Raspberry Pi 3 A+** _(Raspberry Pi 3 B+ is not supported)_
 - **Raspberry Pi 4**
+- **Orange Pi Zero 2W** _(experimental)_
 
 In theory, this can be extended to more hardware in future with these basic requirements.
 
@@ -34,6 +35,7 @@ You may want to update the country code and other settings that works best for y
     - On **Raspberry Pi Zero W** and **Raspberry Pi Zero 2 W**: Use the second micro-usb port marked "USB" and not "PWR".
     - On **Raspberry Pi 3 A+**: Use the only USB-A port with an USB-A to USB-A cable.
     - On **Raspberry Pi 4**, use the USB-C port user for normally powering the board.
+    - On **Orange Pi Zero 2W**, use the USB-C OTG port.
 - Open Bluetooth settings and pair the new device called `AndroidAuto-Dongle-*` or `WirelessAADongle-*` on your phone.
 - After this phone should automatically connect via Wifi and the dongle will connect to the headunit via USB and start Android Auto on the car screen.
 
