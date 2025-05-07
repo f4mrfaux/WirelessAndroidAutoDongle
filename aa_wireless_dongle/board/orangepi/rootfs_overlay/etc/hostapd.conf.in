@@ -1,7 +1,9 @@
 interface=wlan0
 driver=nl80211
 ssid=AAWirelessDongle
+# Dynamic hw_mode - script will set to 'a' if 5GHz is available
 hw_mode=g
+# Channel selection - optimized for local environment
 channel=6
 wmm_enabled=1
 auth_algs=1
@@ -12,14 +14,75 @@ rsn_pairwise=CCMP
 wpa_passphrase=__default_password__
 country_code=__country_code__
 
-# Orange Pi specific optimizations
-beacon_int=100
-dtim_period=2
+# Orange Pi Zero 2W specific optimizations
+# Enhanced beacon settings for better connectivity
+beacon_int=75
+dtim_period=1
+# Limited stations for focused performance
 max_num_sta=2
+# Optimized threshold values for better range/throughput
 rts_threshold=2347
 fragm_threshold=2346
+# 802.11n support
 ieee80211n=1
-ht_capab=[HT40+][SHORT-GI-40][DSSS_CCK-40]
+# Advanced capabilities for better performance
+ht_capab=[HT40+][SHORT-GI-40][DSSS_CCK-40][TX-STBC][RX-STBC1]
+# Enable WMM parameter optimization for low latency
+wmm_enabled=1
+
+# Advanced TX power control for better range
+tx_queue_data3_aifs=1
+tx_queue_data3_cwmin=1
+tx_queue_data3_cwmax=3
+tx_queue_data3_burst=0
+tx_queue_data2_aifs=1
+tx_queue_data2_cwmin=1
+tx_queue_data2_cwmax=3
+tx_queue_data2_burst=0
+
+# Enhanced security options
+wpa_group_rekey=600
+wpa_gmk_rekey=86400
+wpa_ptk_rekey=600
+# Disable scan detection for better performance
+noscan=1
+
+# Reduced overhead
+preamble=1
+# Max transmit power (0=max allowed)
+tx_power=0
+
+# Channel utilization optimization
+obss_interval=10
+# Disable background scanning
+chanswitch=0
+
+# DTIM advertisement optimization
+multicast_to_unicast=1
+uapsd_advertisement_enabled=1
+
+# Better throughput with 802.11n
+wme_enabled=1
+wme_ac_bk_cwmin=4
+wme_ac_bk_cwmax=10
+wme_ac_bk_aifs=7
+wme_ac_bk_txop_limit=0
+wme_ac_bk_acm=0
+wme_ac_be_aifs=3
+wme_ac_be_cwmin=4
+wme_ac_be_cwmax=6
+wme_ac_be_txop_limit=0
+wme_ac_be_acm=0
+wme_ac_vi_aifs=2
+wme_ac_vi_cwmin=3
+wme_ac_vi_cwmax=4
+wme_ac_vi_txop_limit=94
+wme_ac_vi_acm=0
+wme_ac_vo_aifs=2
+wme_ac_vo_cwmin=2
+wme_ac_vo_cwmax=3
+wme_ac_vo_txop_limit=47
+wme_ac_vo_acm=0
 wmm_ac_bk_cwmin=4
 wmm_ac_bk_cwmax=10
 wmm_ac_bk_aifs=7

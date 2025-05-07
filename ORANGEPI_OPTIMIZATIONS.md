@@ -26,6 +26,33 @@ The Orange Pi Zero 2W branch includes specific optimizations to take advantage o
 - Enhanced QoS (Quality of Service) settings for better streaming
 - Customized WMM (Wireless Multimedia) parameters for reduced latency
 
+### 5GHz Support Detection
+- Automatically detects if 5GHz WiFi is supported
+- Creates dual-band setup with both 2.4GHz and 5GHz networks if supported
+- Optimized 5GHz configuration with 802.11ac support
+- Separate networks with optimized settings for each band
+
+### WiFi Module Optimization
+- Enhanced RTL8723CS driver parameters for better performance
+- Disabled power management for maximum throughput
+- Enabled VHT (Very High Throughput) features
+- Optimized AMPDU/AMSDU settings for improved data rates
+- Advanced beamforming capabilities enabled
+
+### WiFi Network Performance
+- Custom WiFi interface configuration with optimized parameters
+- TX power control for maximum range
+- TX queue optimizations for low latency
+- Buffer memory optimizations for better throughput
+- Kernel QoS support for traffic prioritization
+
+### TCP/IP Performance
+- Enhanced socket buffer sizes (128KB)
+- TCP_NODELAY enabled for lower latency
+- Increased socket priority for main connections
+- Increased connection backlog for better handling of multiple devices
+- Low latency mode enabled for TCP connections
+
 ## USB Performance Enhancements
 
 ### Enhanced Buffer Settings
@@ -52,6 +79,16 @@ The Orange Pi Zero 2W branch includes specific optimizations to take advantage o
 ## Using Orange Pi Optimizations
 
 The optimizations are automatically applied when running on Orange Pi Zero 2W hardware. No manual configuration is required as the system detects the hardware at boot time.
+
+### Dual-Band WiFi Support
+
+If your Orange Pi Zero 2W supports 5GHz WiFi, the system will automatically create two WiFi networks:
+- `AAWirelessDongle` - 2.4GHz network for compatibility
+- `AAWirelessDongle-5G` - 5GHz network for higher performance
+
+You can connect your phone to either network. The 5GHz network will provide better performance if your phone is within range.
+
+### Building the Image
 
 To build an image for Orange Pi Zero 2W with all optimizations:
 

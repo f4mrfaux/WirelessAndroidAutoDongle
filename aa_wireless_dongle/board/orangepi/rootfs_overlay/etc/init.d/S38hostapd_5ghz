@@ -1,0 +1,82 @@
+#!/bin/sh
+#
+# Check for 5GHz support and configure hostapd accordingly
+#
+
+BOARD_TYPE=""
+if [ -e /proc/device-tree/model ]; then
+    BOARD_TYPE=`cat /proc/device-tree/model | grep -i "Orange Pi Zero 2W"`
+fi
+
+# Only run on Orange Pi Zero 2W
+if [ -z "$BOARD_TYPE" ]; then
+    exit 0
+fi
+
+# Configuration paths
+HOSTAPD_CONF="/etc/hostapd.conf"
+HOSTAPD_TEMPLATE="/etc/hostapd.conf.in"
+HOSTAPD_5GHZ_CONF="/etc/hostapd_5ghz.conf"
+
+# Function to create 5GHz configuration
+create_5ghz_config() {
+    # Make a copy of the template
+    cp "$HOSTAPD_TEMPLATE" "$HOSTAPD_5GHZ_CONF"
+    
+    # Replace hw_mode=g with hw_mode=a
+    sed -i 's/hw_mode=g/hw_mode=a/g' "$HOSTAPD_5GHZ_CONF"
+    
+    # Set to a 5GHz channel - channel 36 is commonly available
+    sed -i 's/channel=6/channel=36/g' "$HOSTAPD_5GHZ_CONF"
+    
+    # Add 802.11ac support
+    sed -i '/ieee80211n=1/a ieee80211ac=1' "$HOSTAPD_5GHZ_CONF"
+    
+    # Replace HT capabilities with VHT capabilities
+    sed -i 's/ht_capab=\[HT40+\]\[SHORT-GI-40\]\[DSSS_CCK-40\]\[TX-STBC\]\[RX-STBC1\]/ht_capab=\[HT40+\]\[SHORT-GI-20\]\[SHORT-GI-40\]\[TX-STBC\]\[RX-STBC1\]/' "$HOSTAPD_5GHZ_CONF"
+    
+    # Add VHT capabilities
+    sed -i '/ht_capab=/a vht_capab=\[MAX-MPDU-11454\]\[SHORT-GI-80\]\[TX-STBC-2BY1\]\[RX-STBC-1\]\[MAX-A-MPDU-LEN-EXP7\]' "$HOSTAPD_5GHZ_CONF"
+    sed -i '/vht_capab=/a vht_oper_chwidth=1' "$HOSTAPD_5GHZ_CONF"
+    sed -i '/vht_oper_chwidth=/a vht_oper_centr_freq_seg0_idx=42' "$HOSTAPD_5GHZ_CONF"
+    
+    # Change SSID to indicate 5GHz
+    sed -i 's/AAWirelessDongle/AAWirelessDongle-5G/g' "$HOSTAPD_5GHZ_CONF"
+    
+    echo "Created 5GHz configuration at $HOSTAPD_5GHZ_CONF"
+}
+
+case "$1" in
+  start)
+    printf "Checking for 5GHz WiFi support: "
+    
+    # Check if 5GHz is supported
+    if iw list | grep -q "5180 MHz"; then
+        echo "SUPPORTED"
+        create_5ghz_config
+        # Set environment variable for 5GHz support
+        export ORANGEPI_5GHZ_SUPPORT=1
+        echo "ORANGEPI_5GHZ_SUPPORT=1" >> /etc/environment
+        
+        # Create a flag file to indicate 5GHz support
+        touch /var/run/5ghz_supported
+    else
+        echo "NOT SUPPORTED"
+        # Remove any existing 5GHz configuration
+        rm -f "$HOSTAPD_5GHZ_CONF"
+        # Remove any flag file
+        rm -f /var/run/5ghz_supported
+    fi
+    ;;
+  stop)
+    ;;
+  restart|reload)
+    "$0" stop
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?

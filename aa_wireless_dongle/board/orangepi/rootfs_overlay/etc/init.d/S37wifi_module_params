@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# Optimize WiFi module parameters for Orange Pi Zero 2W
+#
+
+BOARD_TYPE=""
+if [ -e /proc/device-tree/model ]; then
+    BOARD_TYPE=`cat /proc/device-tree/model | grep -i "Orange Pi Zero 2W"`
+fi
+
+# Only run on Orange Pi Zero 2W
+if [ -z "$BOARD_TYPE" ]; then
+    exit 0
+fi
+
+case "$1" in
+  start)
+    printf "Optimizing WiFi module parameters: "
+    
+    # Unload the module first
+    modprobe -r 8723cs
+    
+    # Load with optimized parameters
+    modprobe 8723cs \
+      rtw_vht_enable=1 \
+      rtw_beamform_cap=1 \
+      rtw_ampdu_enable=1 \
+      rtw_switch_usb_mode=1 \
+      rtw_power_mgnt=0 \
+      rtw_enusbss=0 \
+      rtw_drvmap_offload=1 \
+      rtw_wifi_hal=1 \
+      rtw_tx_pwr_lmt_enable=0 \
+      rtw_tx_pwr_by_rate=1 \
+      rtw_channel_plan=16 \
+      rtw_en_gtimer=1 \
+      rtw_lps_chk_by_tp=1 \
+      rtw_low_power=0 \
+      rtw_ant_num=2 \
+      rtw_explicit_beamformer=1 \
+      rtw_explicit_beamformee=1 \
+      rtw_mu_beamformer=1 \
+      rtw_mu_beamformee=1 \
+      rtw_antdiv_cfg=0 \
+      rtw_rfe_type=64 \
+      rtw_rx_ampdu_sz_limit_1ss=0x7 \
+      rtw_rx_ampdu_sz_limit_2ss=0x7 \
+      rtw_ampdu_factor=7 \
+      rtw_amsdu_mode=1
+      
+    # Enable TX power offload
+    if [ -e /sys/module/8723cs/parameters/rtw_tx_pwr_lmt_enable ]; then
+      echo "0" > /sys/module/8723cs/parameters/rtw_tx_pwr_lmt_enable
+    fi
+    
+    # Optimize antenna parameters
+    if [ -e /sys/module/8723cs/parameters/rtw_antdiv_cfg ]; then
+      echo "0" > /sys/module/8723cs/parameters/rtw_antdiv_cfg
+    fi
+    
+    # Increase throughput with AMPDU/AMSDU
+    if [ -e /sys/module/8723cs/parameters/rtw_ampdu_enable ]; then
+      echo "1" > /sys/module/8723cs/parameters/rtw_ampdu_enable
+    fi
+    
+    # Maximize performance by disabling power saving
+    if [ -e /sys/module/8723cs/parameters/rtw_power_mgnt ]; then
+      echo "0" > /sys/module/8723cs/parameters/rtw_power_mgnt
+    fi
+    
+    # Enable 802.11ac/vht mode if supported
+    if [ -e /sys/module/8723cs/parameters/rtw_vht_enable ]; then
+      echo "1" > /sys/module/8723cs/parameters/rtw_vht_enable
+    fi
+    
+    # Optimize throughput with multi-queue support
+    if [ -e /sys/module/8723cs/parameters/rtw_multi_queues ]; then
+      echo "1" > /sys/module/8723cs/parameters/rtw_multi_queues
+    fi
+    
+    echo "OK"
+    ;;
+  stop)
+    ;;
+  restart|reload)
+    "$0" stop
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?

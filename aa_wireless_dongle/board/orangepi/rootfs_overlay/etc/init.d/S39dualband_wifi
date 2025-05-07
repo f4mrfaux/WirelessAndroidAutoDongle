@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Configure dual-band WiFi if 5GHz is supported
+#
+
+BOARD_TYPE=""
+if [ -e /proc/device-tree/model ]; then
+    BOARD_TYPE=`cat /proc/device-tree/model | grep -i "Orange Pi Zero 2W"`
+fi
+
+# Only run on Orange Pi Zero 2W
+if [ -z "$BOARD_TYPE" ]; then
+    exit 0
+fi
+
+# Check if 5GHz is supported
+if [ ! -f /var/run/5ghz_supported ]; then
+    exit 0
+fi
+
+DNSMASQ_CONF="/etc/dnsmasq.conf"
+DNSMASQ_TEMPLATE="/etc/dnsmasq.conf.orangepi"
+HOSTAPD_5GHZ_CONF="/etc/hostapd_5ghz.conf"
+HOSTAPD_CONF="/etc/hostapd.conf"
+
+# Function to configure dual-band WiFi
+setup_dualband() {
+    printf "Setting up dual-band WiFi: "
+    
+    # Copy optimized dnsmasq configuration
+    cp "$DNSMASQ_TEMPLATE" "$DNSMASQ_CONF"
+    
+    # Enable 5GHz interface in dnsmasq config
+    sed -i 's/#interface=wlan1/interface=wlan1/g' "$DNSMASQ_CONF"
+    sed -i 's/#dhcp-range=wlan1/dhcp-range=wlan1/g' "$DNSMASQ_CONF"
+    sed -i 's/#dhcp-option=wlan1/dhcp-option=wlan1/g' "$DNSMASQ_CONF"
+    
+    # Create a virtual interface for 5GHz
+    iw phy phy0 interface add wlan1 type managed
+    ifconfig wlan1 10.0.1.1 netmask 255.255.255.0 up
+    
+    # Start hostapd for 5GHz interface
+    hostapd -B "$HOSTAPD_5GHZ_CONF" -P /var/run/hostapd_5ghz.pid
+    
+    echo "OK"
+}
+
+case "$1" in
+  start)
+    setup_dualband
+    ;;
+  stop)
+    if [ -f /var/run/hostapd_5ghz.pid ]; then
+        printf "Stopping 5GHz hostapd: "
+        kill $(cat /var/run/hostapd_5ghz.pid)
+        echo "OK"
+    fi
+    ;;
+  restart|reload)
+    "$0" stop
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?

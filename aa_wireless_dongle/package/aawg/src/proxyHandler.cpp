@@ -264,6 +264,15 @@ void AAWProxy::handleClient(int server_sock) {
 
 std::optional<std::thread> AAWProxy::startServer(int32_t port) {
     Logger::instance()->info("Starting tcp server\n");
+    
+    // Check if this is Orange Pi with dual-band WiFi
+    bool hasDualBand = false;
+    char* orangePi5GHz = std::getenv("ORANGEPI_5GHZ_SUPPORT");
+    if (orangePi5GHz != nullptr && std::string(orangePi5GHz) == "1") {
+        hasDualBand = true;
+        Logger::instance()->info("Orange Pi with dual-band WiFi detected\n");
+    }
+    
     int server_sock;
     if ((server_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         Logger::instance()->info("creating socket failed: %s\n", strerror(errno));
@@ -274,6 +283,36 @@ std::optional<std::thread> AAWProxy::startServer(int32_t port) {
     if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
         Logger::instance()->info("setsockopt failed: %s\n", strerror(errno));
         return std::nullopt;
+    }
+    
+    // Enhanced socket settings for Orange Pi
+    char* orangePiDevice = std::getenv("ORANGEPI_DEVICE");
+    if (orangePiDevice != nullptr && std::string(orangePiDevice) == "1") {
+        // Enable TCP performance optimizations
+        int tcpNoDelay = 1;
+        if (setsockopt(server_sock, IPPROTO_TCP, TCP_NODELAY, &tcpNoDelay, sizeof(tcpNoDelay))) {
+            Logger::instance()->info("setsockopt TCP_NODELAY failed: %s\n", strerror(errno));
+        }
+        
+        // Increase TCP receive buffer size for better throughput
+        int tcpRcvBuf = 131072; // 128K
+        if (setsockopt(server_sock, SOL_SOCKET, SO_RCVBUF, &tcpRcvBuf, sizeof(tcpRcvBuf))) {
+            Logger::instance()->info("setsockopt SO_RCVBUF failed: %s\n", strerror(errno));
+        }
+        
+        // Increase TCP send buffer size for better throughput
+        int tcpSndBuf = 131072; // 128K
+        if (setsockopt(server_sock, SOL_SOCKET, SO_SNDBUF, &tcpSndBuf, sizeof(tcpSndBuf))) {
+            Logger::instance()->info("setsockopt SO_SNDBUF failed: %s\n", strerror(errno));
+        }
+        
+        // Set high priority for socket
+        int priority = 6; // High priority
+        if (setsockopt(server_sock, SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority))) {
+            Logger::instance()->info("setsockopt SO_PRIORITY failed: %s\n", strerror(errno));
+        }
+        
+        Logger::instance()->info("Applied enhanced socket settings for Orange Pi\n");
     }
 
     struct sockaddr_in address;
@@ -286,7 +325,9 @@ std::optional<std::thread> AAWProxy::startServer(int32_t port) {
         return std::nullopt;
     }
 
-    if (listen(server_sock, 3) < 0) {
+    // Increase backlog for Orange Pi
+    int backlog = orangePiDevice != nullptr ? 10 : 3;
+    if (listen(server_sock, backlog) < 0) {
         Logger::instance()->info("listen failed: %s\n", strerror(errno));
         return std::nullopt;
     }
