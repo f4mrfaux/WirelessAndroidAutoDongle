@@ -4,7 +4,7 @@
 #
 
 SERIAL_NUMBER="0123456"
-MANUFACTURER="My Own"
+MANUFACTURER="Orange Pi Auto"
 PRODUCT="AA Wireless Dongle"
 
 ACCESSORY_GADGET_NAME="accessory"

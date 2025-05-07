@@ -1,0 +1,48 @@
+#!/bin/sh
+#
+# Start bluetooth auth agent
+#
+
+AGENT_EXECUTABLE=/usr/bin/bt-agent
+AGENT_ARGS="-c NoInputNoOutput"
+
+BOARD_TYPE=""
+if [ -e /proc/device-tree/model ]; then
+    BOARD_TYPE=`cat /proc/device-tree/model | grep -i "Orange Pi Zero 2W"`
+fi
+
+# Enhanced parameters for Orange Pi Zero 2W with better radio
+if [ ! -z "$BOARD_TYPE" ]; then
+    # Increase Bluetooth transmit power for Orange Pi
+    HCICONFIG_TX_POWER="-c hci0 up; sleep 1; hciconfig hci0 reset; sleep 1; hciconfig hci0 up; sleep 1; hcitool -i hci0 cmd 0x3f 0x0013 0x01 0x0c; sleep 1;"
+    HCICONFIG="hciconfig $HCICONFIG_TX_POWER"
+else
+    HCICONFIG="hciconfig hci0 reset; sleep 1; hciconfig hci0 up; sleep 1;"
+fi
+
+case "$1" in
+  start)
+	printf "Starting bluetooth agent: "
+	
+	# Reset and power up hci0
+	$HCICONFIG
+	
+	# Start bluetooth agent
+	start-stop-daemon -b -q -m -S -p /var/run/bt-agent.pid -x "$AGENT_EXECUTABLE" -- $AGENT_ARGS
+	[ $? = 0 ] && echo "OK" || echo "FAIL"
+	;;
+  stop)
+	printf "Stopping bluetooth agent: "
+	start-stop-daemon -K -q -p /var/run/bt-agent.pid
+	[ $? = 0 ] && echo "OK" || echo "FAIL"
+	;;
+  restart|reload)
+	"$0" stop
+	"$0" start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?

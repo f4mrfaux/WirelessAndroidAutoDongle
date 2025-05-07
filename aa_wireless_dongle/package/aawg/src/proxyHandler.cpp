@@ -67,7 +67,23 @@ ssize_t AAWProxy::readMessage(int fd, unsigned char *buffer, size_t buffer_len) 
 }
 
 void AAWProxy::forward(ProxyDirection direction, std::atomic<bool>& should_exit) {
+    // Default buffer size
     size_t buffer_len = 16384;
+    
+    // Check for Orange Pi enhanced USB settings
+    char* usbBufferSize = std::getenv("AAWG_USB_BUFFER_SIZE");
+    if (usbBufferSize != nullptr) {
+        try {
+            size_t customBufferSize = std::stoi(usbBufferSize);
+            if (customBufferSize > 0) {
+                buffer_len = customBufferSize;
+                Logger::instance()->info("Using enhanced USB buffer size: %zu\n", buffer_len);
+            }
+        } catch(...) {
+            // Keep default if conversion fails
+        }
+    }
+    
     unsigned char buffer[buffer_len];
 
     bool read_message;

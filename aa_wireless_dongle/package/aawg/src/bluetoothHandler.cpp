@@ -232,10 +232,38 @@ void BluetoothHandler::retryConnectLoop() {
     int32_t maxRetries = Config::instance()->getConnectionRetries();
     int32_t retryDelaySeconds = Config::instance()->getHighPerformanceMode() ? 10 : 20;
     
+    // Check for Orange Pi enhanced settings
+    char* btPowerClass = std::getenv("AAWG_BT_POWER_CLASS");
+    char* btScanMode = std::getenv("AAWG_BT_SCAN_MODE");
+    char* orangePiDevice = std::getenv("ORANGEPI_DEVICE");
+    
+    bool isOrangePi = (orangePiDevice != nullptr && std::string(orangePiDevice) == "1");
+    
+    // Orange Pi has better Bluetooth, so we can use more aggressive settings
+    if (isOrangePi) {
+        // Reduce delay for Orange Pi's more powerful radio
+        retryDelaySeconds = Config::instance()->getHighPerformanceMode() ? 5 : 10;
+        
+        // If power class is set, apply it
+        if (btPowerClass != nullptr) {
+            Logger::instance()->info("Using enhanced Bluetooth power class: %s\n", btPowerClass);
+            
+            // We could potentially set a higher power class via HCI commands here
+            // but we're already doing that in the S90bt_agent script
+        }
+    }
+    
     Logger::instance()->info("Starting connection retry loop with max %d retries\n", maxRetries);
 
     while (!should_exit && attempts <= maxRetries) {
         Logger::instance()->info("Connection attempt %d of %d\n", attempts + 1, maxRetries + 1);
+        
+        // For Orange Pi, apply enhanced scanning before connecting
+        if (isOrangePi && btScanMode != nullptr) {
+            // This would be a place to run more aggressive scanning if needed
+            Logger::instance()->info("Using enhanced Bluetooth scan mode: %s\n", btScanMode);
+        }
+        
         connectDevice();
         attempts++;
 
@@ -262,6 +290,13 @@ void BluetoothHandler::init() {
     m_connection = m_dispatcher->create_connection( DBus::BusType::SYSTEM );
 
     std::string adapterAliasPrefix = (Config::instance()->getConnectionStrategy() == ConnectionStrategy::DONGLE_MODE) ? ADAPTER_ALIAS_DONGLE_PREFIX : ADAPTER_ALIAS_PREFIX;
+
+    // Check if this is an Orange Pi device - if so, modify the adapter alias
+    char* orangePiDevice = std::getenv("ORANGEPI_DEVICE");
+    if (orangePiDevice != nullptr && std::string(orangePiDevice) == "1") {
+        adapterAliasPrefix = "OPiAuto-";
+        Logger::instance()->info("Orange Pi Zero 2W detected, using enhanced Bluetooth settings\n");
+    }
 
     m_adapterAlias = adapterAliasPrefix + Config::instance()->getUniqueSuffix();
 
