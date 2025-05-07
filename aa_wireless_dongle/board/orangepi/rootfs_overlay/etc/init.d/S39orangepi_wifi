@@ -1,0 +1,82 @@
+#!/bin/sh
+#
+# Optimize WiFi settings for Orange Pi Zero 2W
+#
+
+BOARD_TYPE=""
+if [ -e /proc/device-tree/model ]; then
+    BOARD_TYPE=`cat /proc/device-tree/model | grep -i "Orange Pi Zero 2W"`
+fi
+
+# Only run on Orange Pi Zero 2W
+if [ -z "$BOARD_TYPE" ]; then
+    exit 0
+fi
+
+case "$1" in
+  start)
+    printf "Optimizing WiFi for Orange Pi Zero 2W: "
+    
+    # Configure RTL8723CS for optimal performance
+    modprobe -r 8723cs
+    modprobe 8723cs rtw_vht_enable=1 rtw_switch_usb_mode=1
+    
+    # Optimize WiFi regulatory domain parameters
+    # Set region to match configured country code
+    COUNTRY_CODE=$(grep -E "^AAWG_COUNTRY_CODE=" /etc/aawgd.conf | cut -d'=' -f2)
+    [ -z "$COUNTRY_CODE" ] && COUNTRY_CODE="US"
+    iw reg set "$COUNTRY_CODE"
+    
+    # Enable 5GHz support if available
+    if iw list | grep -q "5180 MHz"; then
+        echo "5GHz support detected"
+        # Set environment variable to inform other components
+        export ORANGEPI_5GHZ_SUPPORT=1
+        echo "ORANGEPI_5GHZ_SUPPORT=1" >> /etc/environment
+    fi
+    
+    # Set antenna gain parameters
+    if [ -e /sys/module/8723cs/parameters/rtw_antenna_gain ]; then
+        echo "6" > /sys/module/8723cs/parameters/rtw_antenna_gain
+    fi
+    
+    # Configure advanced power management for WiFi
+    if [ -e /sys/module/8723cs/parameters/rtw_power_mgnt ]; then
+        echo "0" > /sys/module/8723cs/parameters/rtw_power_mgnt
+    fi
+    
+    # Set higher TX power if not restricted by regulatory domain
+    if iw list | grep -q "disabled"; then
+        # Set to max allowed by regulatory domain
+        iwconfig wlan0 txpower auto
+    else
+        # Try to set higher power if allowed
+        iwconfig wlan0 txpower 20
+    fi
+    
+    # Configure QoS optimization for low latency
+    tc qdisc add dev wlan0 root handle 1: htb default 12
+    tc class add dev wlan0 parent 1: classid 1:1 htb rate 20mbit ceil 20mbit
+    tc class add dev wlan0 parent 1:1 classid 1:10 htb rate 15mbit ceil 20mbit prio 0
+    tc class add dev wlan0 parent 1:1 classid 1:12 htb rate 5mbit ceil 15mbit prio 1
+    
+    # Set WiFi interface MTU to optimal value for Android Auto
+    ifconfig wlan0 mtu 1500
+    
+    # Enable hardware acceleration if available
+    ethtool -K wlan0 rx-checksum on tx-checksum-ip-generic on 2>/dev/null || true
+    
+    echo "OK"
+    ;;
+  stop)
+    ;;
+  restart|reload)
+    "$0" stop
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?
